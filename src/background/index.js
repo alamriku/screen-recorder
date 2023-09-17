@@ -1,3 +1,6 @@
+import {CUSTOMER_ACCESS_TOKEN} from "../const";
+import fetchApiClient from "../content/utils/fetchApiClient";
+
 let videoURL = null;
 let videoLen = 0;
 let tabTitle = null;
@@ -27,3 +30,11 @@ const onMessage = async (request, _, sendResponse) => {
 };
 
 chrome.runtime.onMessage.addListener(onMessage);
+
+const sendStreamVideoId = () => {
+  chrome.storage.sync.get([CUSTOMER_ACCESS_TOKEN]).then((result) => {
+    fetchApiClient(result[CUSTOMER_ACCESS_TOKEN]).post()
+  });
+}
+
+sendStreamVideoId();

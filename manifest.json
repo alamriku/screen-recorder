@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Reco - Screen Recorder",
+  "name": "Clippy - Screen Recorder",
   "description": "An effective tool for high quality video record from active tab, desktop or webcam",
   "version": "2.1.2",
   "icons": {
@@ -10,13 +10,14 @@
     "32": "icons/32.png"
   },
   "action": {
-    "default_title": "Reco - Screen Recorder",
+    "default_title": "Clippy - Screen Recorder",
     "default_popup": "popup.html"
   },
   "permissions": [
     "desktopCapture",
     "activeTab",
-    "tabs"
+    "tabs",
+    "storage"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -34,6 +35,15 @@
       ],
       "matches": [
         "*://*/*"
+      ],
+      "run_at": "document_end"
+    },
+    {
+      "js": [
+        "parserOnClippy.js"
+      ],
+      "matches": [
+        "http://localhost:8878/*"
       ],
       "run_at": "document_end"
     }

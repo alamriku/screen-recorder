@@ -1,6 +1,8 @@
 import { h, Fragment } from 'preact';
 import { useCallback, useState } from 'preact/hooks';
 
+ import * as tus from './tus'
+
 import Draggable from './components/Draggable';
 import Timer from './components/Timer';
 import downloadVideo from './utils/downloadVideo';
@@ -36,6 +38,8 @@ function App({ request }) {
   const [isAppClosed, setIsAppClosed] = useState(false);
 
   const chunks = [];
+  let bytesTotal = 0;
+  let mediaId = null;
 
   const onMediaControl = async (actionType) => {
     try {
@@ -51,10 +55,13 @@ function App({ request }) {
 
           console.log('mediaRecorder.onstop: recording is stopped');
           if (autoDownload) onDownload();
+
+          uploadToCloudflare()
         }
 
         mediaRecorder.ondataavailable = (e) => {
           chunks.push(e.data);
+          bytesTotal += e.data.size;
         }        
 
         setMediaRecorder(mediaRecorder);
@@ -103,9 +110,78 @@ function App({ request }) {
     }
   }
 
+  const getVideoUrlById = async () => {
+    // here we will call the backend to get the url. we will set get request with the stream-media-id
+  }
+
+  const getExpiryDate = () => {
+    let theDate = new Date();
+    theDate.setHours(theDate.getHours() + 5);
+    return theDate.toISOString();
+  };
+
+  const startUpload = (file, chunkSize, endpoint) =>  {
+    console.log(file.name);
+    const options = {
+      endpoint: endpoint,
+      chunkSize: 5 * 1024 * 1024,
+      retryDelays: [0, 3000, 5000, 10000, 20000],
+      metadata: {
+        expiry: getExpiryDate(),
+        maxDurationSeconds: 3600,
+        name: file.name,
+      },
+      onError(error) {
+        console.log(error);
+      },
+      onSuccess() {
+        console.log('Upload finished');
+      },
+      onProgress(bytesUploaded) {
+        let percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2);
+        console.log(bytesUploaded, bytesTotal, percentage + '%');
+      },
+      onAfterResponse: function (req, res) {
+        return new Promise(resolve => {
+          let mediaIdHeader = res.getHeader('Stream-Media-ID');
+          console.log(mediaIdHeader);
+          if (mediaIdHeader) {
+            getVideoUrlById();
+            mediaId = mediaIdHeader;
+          }
+          resolve();
+        });
+      },
+    };
+
+    let tusUpload = new tus.Upload(file, options);
+    // Check if there are any previous uploads to continue.
+    tusUpload.findPreviousUploads().then(function (previousUploads) {
+      // Found previous uploads so we select the first one.
+      if (previousUploads.length) {
+        tusUpload.resumeFromPreviousUpload(previousUploads[0])
+      }
+
+      // Start the upload
+      tusUpload.start()
+    })
+  }
+
+  const uploadToCloudflare = () => {
+    const fileName = "video_file_" + Math.floor(Date.now() / 1000) + ".webm";
+    const videoBlob = new Blob(chunks, { type: 'video/webm' });
+
+// Create a File object with the Blob and filename
+    const videoFile = new File([videoBlob], fileName, { type: 'video/webm' });
+    //let endpoint = 'https://worker-sites-template.badrul-d3f.workers.dev/upload'
+    let endpoint = 'http://127.0.0.1:8787/upload'
+    startUpload(videoFile, bytesTotal, endpoint);
+  }
+
   if ((autoDownload && isRecordingFinished) || isAppClosed) {
     return <Fragment></Fragment>
   }
+
   if (isRecordingFinished) {
     return <Draggable className="drag-reco" style={{ left: '20px' }}>
       <ButtonMove />
@@ -140,6 +216,8 @@ function App({ request }) {
       </Draggable>
     </Fragment>
   }
+
+
 }
 
 export default App;
