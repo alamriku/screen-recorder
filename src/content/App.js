@@ -21,6 +21,7 @@ import ButtonMicOff from './components/button/ButtonMicOff';
 import createLink from './utils/createLink';
 import ButtonOpenEditor from './components/button/ButtonOpenEditor';
 import ButtonClose from './components/button/ButtonClose';
+import {SAVE_STREAM_DATA_ON_DB} from "../const";
 
 const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 
@@ -110,8 +111,8 @@ function App({ request }) {
     }
   }
 
-  const getVideoUrlById = async () => {
-    // here we will call the backend to get the url. we will set get request with the stream-media-id
+  const getStreamDataById = async (id) => {
+   const streamData = await chrome.runtime.sendMessage({ from: SAVE_STREAM_DATA_ON_DB, streamMediaId: id});
   }
 
   const getExpiryDate = () => {
@@ -131,10 +132,18 @@ function App({ request }) {
         maxDurationSeconds: 3600,
         name: file.name,
       },
-      onError(error) {
-        console.log(error);
+      onError(err) {
+        console.log("Error", err)
+        console.log("Request", err.originalRequest)
+        console.log("Response", err.originalResponse)
       },
       onSuccess() {
+        if (mediaId) {
+          getStreamDataById(mediaId);
+        } else {
+          console.log('Stream id not found');
+          alert('Unable to save the screencast');
+        }
         console.log('Upload finished');
       },
       onProgress(bytesUploaded) {
@@ -143,13 +152,9 @@ function App({ request }) {
       },
       onAfterResponse: function (req, res) {
         return new Promise(resolve => {
-          let mediaIdHeader = res.getHeader('Stream-Media-ID');
-          console.log(mediaIdHeader);
-          if (mediaIdHeader) {
-            getVideoUrlById();
-            mediaId = mediaIdHeader;
-          }
-          resolve();
+          mediaId = res.getHeader('Stream-Media-ID');
+          console.log(mediaId);
+          resolve(mediaId);
         });
       },
     };
@@ -168,7 +173,7 @@ function App({ request }) {
   }
 
   const uploadToCloudflare = () => {
-    const fileName = "video_file_" + Math.floor(Date.now() / 1000) + ".webm";
+    const fileName = "clippy_screencast_" + Math.floor(Date.now() / 1000) + ".webm";
     const videoBlob = new Blob(chunks, { type: 'video/webm' });
 
 // Create a File object with the Blob and filename

@@ -1,5 +1,5 @@
-import {CUSTOMER_ACCESS_TOKEN} from "../const";
-import fetchApiClient from "../content/utils/fetchApiClient";
+import {CUSTOMER_ACCESS_TOKEN, SAVE_STREAM_DATA_ON_DB, STREAM_UPLOAD_TO_CF} from "../const";
+import FetchApiClient from "../content/utils/fetchApiClient";
 
 let videoURL = null;
 let videoLen = 0;
@@ -23,6 +23,17 @@ const onMessage = async (request, _, sendResponse) => {
     if (request.from === 'editor') {
       sendResponse({ tabTitle, videoURL, videoLen, from: 'background' });
     }
+
+    if (request.from === SAVE_STREAM_DATA_ON_DB) {
+      chrome.storage.sync.get([CUSTOMER_ACCESS_TOKEN]).then((result) => {
+        const fetchApiClient = new FetchApiClient(result[CUSTOMER_ACCESS_TOKEN]);
+        fetchApiClient.post('/api/v1/customers/save-stream-data', {
+          'stream_media_id': request.streamMediaId,
+        }).then(res => {
+          console.log(res)
+        })
+      });
+    }
   } catch (error) {
     console.log(error.message);
     sendResponse(null)
@@ -31,10 +42,3 @@ const onMessage = async (request, _, sendResponse) => {
 
 chrome.runtime.onMessage.addListener(onMessage);
 
-const sendStreamVideoId = () => {
-  chrome.storage.sync.get([CUSTOMER_ACCESS_TOKEN]).then((result) => {
-    fetchApiClient(result[CUSTOMER_ACCESS_TOKEN]).post()
-  });
-}
-
-sendStreamVideoId();

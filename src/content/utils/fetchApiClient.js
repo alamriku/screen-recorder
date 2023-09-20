@@ -1,7 +1,9 @@
+import {BASE_URL} from "../../const";
+
 class FetchApiClient {
     constructor(bearerToken) {
         this.bearerToken = bearerToken;
-        this.baseUrl = process.env.BASE_URL; // You can set a base URL if needed
+        this.baseUrl = BASE_URL; // You can set a base URL if needed
         this.options = {
             headers: {
                 'Authorization': `Bearer ${this.bearerToken}`,
@@ -20,13 +22,13 @@ class FetchApiClient {
         return this;
     }
 
-    get(url) {
-        return this.request('GET', url);
+    get(uri) {
+        return this.request('GET', uri);
     }
 
-    post(url, data) {
+    post(uri, data) {
         this.options.body = JSON.stringify(data);
-        return this.request('POST', url);
+        return this.request('POST', uri);
     }
 
     // Add other HTTP methods as needed (e.g., PUT, DELETE)
